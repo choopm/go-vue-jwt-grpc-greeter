@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package greeter.greeterservice;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "gitlab.0pointer.org/choopm/greeter/api/service/greeterservice;greeterservice";
+
+service GreeterService {
+  option (google.api.default_host) = "clouddatabase.googleapis.com";
+  option (google.api.oauth_scopes) =
+      "https://www.googleapis.com/auth/Hello,"
+      "https://www.googleapis.com/auth/Hello.read-only";
+
+  rpc Hello(HelloRequest) returns (HelloResponse) {
+    option (google.api.http) = {
+      get: "/api/hello"
+    };
+    option (google.api.method_signature) = "name";
+  }
+}
+
+message HelloRequest {
+  string name = 1 [(google.api.field_behavior) = OPTIONAL];
+}
+message HelloResponse {
+  string greeting = 1;
+}
