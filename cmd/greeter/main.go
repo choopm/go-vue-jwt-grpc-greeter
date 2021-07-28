@@ -1,18 +1,21 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"html/template"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"golang.org/x/crypto/bcrypt"
 
 	"gitlab.0pointer.org/choopm/greeter"
 	"gitlab.0pointer.org/choopm/greeter/api/services/greeterservice"
@@ -24,6 +27,7 @@ var (
 	address         = os.Getenv("ADDRESS")
 	port            = os.Getenv("PORT")
 	bearerTokenFile = os.Getenv("BEARER_TOKEN")
+	passwdFile      = os.Getenv("PASSWD")
 	certFile        = os.Getenv("TLS_CRT")
 	keyFile         = os.Getenv("TLS_KEY")
 	httpsRedirect   = os.Getenv("HTTPS_REDIRECT")
@@ -56,8 +60,31 @@ func auth(c echo.Context) error {
 	username := c.FormValue("username")
 	password := c.FormValue("password")
 
+	file, err := os.Open(passwdFile)
+	if err != nil {
+		log.Println(err)
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+
+	matched := false
+	for scanner.Scan() {
+		line := scanner.Text()
+		user := strings.Split(line, ":")[0]
+		if user != username {
+			continue
+		}
+
+		hash := strings.Join(strings.Split(line, ":")[1:], ":")
+		err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+		if err == nil {
+			matched = true
+			break
+		}
+	}
+
 	// Throws unauthorized error
-	if username != "admin" || password != "admin" {
+	if !matched {
 		return echo.ErrUnauthorized
 	}
 
@@ -66,8 +93,7 @@ func auth(c echo.Context) error {
 
 	// Set claims
 	claims := token.Claims.(jwt.MapClaims)
-	claims["name"] = "admin"
-	claims["admin"] = true
+	claims["name"] = username
 	claims["expires"] = time.Now().Add(time.Hour * 72).Unix()
 
 	// Generate encoded token and send it as response.
@@ -96,6 +122,22 @@ func testjwt(c echo.Context) error {
 }
 
 func main() {
+	// Generate default login if passwd is missing
+	_, err := os.Stat(passwdFile)
+	if os.IsNotExist(err) {
+		hash, err := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
+		if err != nil {
+			log.Println(err)
+		}
+		err = os.WriteFile(passwdFile, []byte("admin"+string(hash)), 0644)
+		if err != nil {
+			log.Println(err)
+		}
+	} else {
+		log.Println(err)
+	}
+
+	// Start grpc greeter
 	go greeter.Start(bearerTokenFile, certFile, keyFile)
 
 	ctx := context.Background()
@@ -136,6 +178,10 @@ func main() {
 		})
 	}))
 
+	e.GET("/app/", func(c echo.Context) error {
+		return c.Render(http.StatusOK, "app.html", nil)
+	})
+
 	// Auth route
 	// Required to test authorisation when jwt does't exist
 	e.POST("/auth", auth)
@@ -145,22 +191,18 @@ func main() {
 
 	// JWT test
 	jwt := e.Group("/testjwt")
-	jwt.Use(middleware.JWT([]byte(jwtSecret)))
+	jwt.Use(middleware.JWT([]byte(jwtSecret))) // JWT
 	jwt.GET("", testjwt)
 
 	// grpc-gateway
 	api := e.Group("/api")
-	api.Use(middleware.JWT([]byte(jwtSecret)))
+	api.Use(middleware.JWT([]byte(jwtSecret))) // JWT
 	api.Use(echo.WrapMiddleware(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			r.Header.Del("authorization") // don't pass the auth header to upstreams
 			mux.ServeHTTP(w, r)
 		})
 	}))
-
-	e.GET("/app/", func(c echo.Context) error {
-		return c.Render(http.StatusOK, "app.html", nil)
-	})
 
 	if httpsRedirect == "true" {
 		e2 := echo.New()

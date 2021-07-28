@@ -21,6 +21,7 @@ COPY web /web
 ENV BEARER_TOKEN "/data/bearer.token"
 ENV TLS_CRT "/data/tls.crt"
 ENV TLS_KEY "/data/tls.key"
+ENV PASSWD "/data/passwd"
 ENV ADDRESS "0.0.0.0"
 ENV PORT "443"
 ENV HTTPS_REDIRECT "true"
