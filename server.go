@@ -23,12 +23,12 @@ func (s *server) Hello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRespo
 	return &pb.HelloResponse{Greeting: "Hello " + in.GetName()}, nil
 }
 
-func Start(bearerTokenFile string, certFile string, keyFile string) {
+func Start(jwtSecret string, certFile string, keyFile string) {
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	s, err := grpchelpers.NewServer(bearerTokenFile, certFile, keyFile)
+	s, err := grpchelpers.NewServer(jwtSecret, certFile, keyFile)
 	if err != nil {
 		log.Fatalf("failed to create server: %v", err)
 	}

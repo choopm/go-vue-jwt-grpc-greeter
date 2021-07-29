@@ -35,7 +35,7 @@ ENV TLS_KEY "/data/tls.key"
 ENV PASSWD "/data/passwd"
 ENV ADDRESS "0.0.0.0"
 ENV PORT "443"
-ENV HTTPS_REDIRECT "true"
+ENV HTTP_REDIRECT "true"
 VOLUME [ "/data" ]
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["/greeter"]

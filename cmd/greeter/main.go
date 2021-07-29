@@ -22,14 +22,13 @@ import (
 )
 
 var (
-	address       = os.Getenv("ADDRESS")
-	port          = os.Getenv("PORT")
-	jwtSecretFile = os.Getenv("JWT_SECRET")
-	passwdFile    = os.Getenv("PASSWD")
-	certFile      = os.Getenv("TLS_CRT")
-	keyFile       = os.Getenv("TLS_KEY")
-	httpsRedirect = os.Getenv("HTTPS_REDIRECT")
-	jwtSecret     = grpchelpers.GetBearerTokenFromFile(jwtSecretFile)
+	address      = os.Getenv("ADDRESS")
+	port         = os.Getenv("PORT")
+	passwdFile   = os.Getenv("PASSWD")
+	certFile     = os.Getenv("TLS_CRT")
+	keyFile      = os.Getenv("TLS_KEY")
+	httpRedirect = os.Getenv("HTTP_REDIRECT")
+	jwtSecret    = grpchelpers.GetTrimmedStringFromFile(os.Getenv("JWT_SECRET"))
 )
 
 func auth(c echo.Context) error {
@@ -70,51 +69,58 @@ func auth(c echo.Context) error {
 		return echo.ErrUnauthorized
 	}
 
-	// Create token
-	token := jwt.New(jwt.SigningMethodHS256)
-
-	// Set claims
-	claims := token.Claims.(jwt.MapClaims)
-	claims["name"] = req.Username
-	claims["expires"] = time.Now().Add(time.Hour * 72).Unix()
-
-	// Generate encoded token and send it as response.
-	t, err := token.SignedString([]byte(jwtSecret))
+	token, err := createJWT(req.Username, time.Now().Add(time.Hour*72).Unix())
 	if err != nil {
 		return err
 	}
 
 	cookie := new(http.Cookie)
 	cookie.Name = "bearer-token"
-	cookie.Value = t
+	cookie.Value = token
 	cookie.Expires = time.Now().Add(time.Hour * 72)
 	cookie.Secure = true
 	//c.SetCookie(cookie)
 
 	return c.JSON(http.StatusOK, map[string]string{
-		"token":    t,
+		"token":    token,
 		"username": req.Username,
 	})
 }
 
+func createJWT(username string, expires int64) (string, error) {
+	claims := &jwt.StandardClaims{
+		ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
+		IssuedAt:  time.Now().Unix(),
+		Issuer:    "greeter",
+	}
+	// Create token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Generate encoded token and send it as response.
+	t, err := token.SignedString([]byte(jwtSecret))
+	if err != nil {
+		return "", err
+	}
+	return string(t), nil
+}
 func main() {
 	// Generate default login if passwd is missing
 	_, err := os.Stat(passwdFile)
 	if os.IsNotExist(err) {
 		hash, err := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
 		if err != nil {
-			log.Println(err)
+			log.Println("Unable to generate hash", err)
 		}
 		err = os.WriteFile(passwdFile, []byte("admin:"+string(hash)), 0644)
 		if err != nil {
-			log.Println(err)
+			log.Println("Unable to write "+passwdFile, err)
 		}
-	} else {
-		log.Println(err)
+	} else if err != nil {
+		log.Fatalln("Can't stat "+passwdFile, err)
 	}
 
 	// Start grpc greeter
-	go greeter.Start(jwtSecretFile, certFile, keyFile)
+	go greeter.Start(jwtSecret, certFile, keyFile)
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -123,7 +129,7 @@ func main() {
 	// Register gRPC server endpoint
 	// Note: Make sure the gRPC server is running properly and accessible
 	mux := runtime.NewServeMux()
-	opts, err := grpchelpers.GetDialOptions(jwtSecretFile, certFile, "app")
+	opts, err := grpchelpers.GetDialOptions("/dev/null", certFile, "app")
 	check(err)
 	err = greeterservice.RegisterGreeterServiceHandlerFromEndpoint(ctx, mux, "127.0.0.1:50051", opts)
 	check(err)
@@ -156,12 +162,12 @@ func main() {
 	api.Use(middleware.JWT([]byte(jwtSecret))) // JWT
 	api.Use(echo.WrapMiddleware(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r.Header.Del("authorization") // don't pass the auth header to upstreams
+			// r.Header.Del("authorization") // don't pass the auth header to upstreams
 			mux.ServeHTTP(w, r)
 		})
 	}))
 
-	if httpsRedirect == "true" {
+	if httpRedirect == "true" {
 		e2 := echo.New()
 		e2.Use(middleware.Logger())
 		e2.Use(middleware.Recover())
