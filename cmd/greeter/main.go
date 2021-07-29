@@ -3,8 +3,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"html/template"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -24,41 +22,25 @@ import (
 )
 
 var (
-	address         = os.Getenv("ADDRESS")
-	port            = os.Getenv("PORT")
-	bearerTokenFile = os.Getenv("BEARER_TOKEN")
-	passwdFile      = os.Getenv("PASSWD")
-	certFile        = os.Getenv("TLS_CRT")
-	keyFile         = os.Getenv("TLS_KEY")
-	httpsRedirect   = os.Getenv("HTTPS_REDIRECT")
-	jwtSecret       = grpchelpers.GetBearerTokenFromFile(bearerTokenFile)
+	address       = os.Getenv("ADDRESS")
+	port          = os.Getenv("PORT")
+	jwtSecretFile = os.Getenv("JWT_SECRET")
+	passwdFile    = os.Getenv("PASSWD")
+	certFile      = os.Getenv("TLS_CRT")
+	keyFile       = os.Getenv("TLS_KEY")
+	httpsRedirect = os.Getenv("HTTPS_REDIRECT")
+	jwtSecret     = grpchelpers.GetBearerTokenFromFile(jwtSecretFile)
 )
 
-// TemplateRenderer is a custom html/template renderer for Echo framework
-type TemplateRenderer struct {
-	templates *template.Template
-}
-
-// Render renders a template document
-func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	err := t.templates.ExecuteTemplate(w, name, data)
-	if err != nil {
-		log.Println(err)
-	}
-	return err
-}
-
-func templateFuncs() template.FuncMap {
-	return template.FuncMap{
-		"world": func() string {
-			return "World"
-		},
-	}
-}
-
 func auth(c echo.Context) error {
-	username := c.FormValue("username")
-	password := c.FormValue("password")
+	type Req struct {
+		Username string `json:"username" form:"username" query:"username"`
+		Password string `json:"password" form:"password" query:"password"`
+	}
+	req := new(Req)
+	if err := c.Bind(req); err != nil {
+		return err
+	}
 
 	file, err := os.Open(passwdFile)
 	if err != nil {
@@ -71,12 +53,12 @@ func auth(c echo.Context) error {
 	for scanner.Scan() {
 		line := scanner.Text()
 		user := strings.Split(line, ":")[0]
-		if user != username {
+		if user != req.Username {
 			continue
 		}
 
 		hash := strings.Join(strings.Split(line, ":")[1:], ":")
-		err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+		err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.Password))
 		if err == nil {
 			matched = true
 			break
@@ -93,7 +75,7 @@ func auth(c echo.Context) error {
 
 	// Set claims
 	claims := token.Claims.(jwt.MapClaims)
-	claims["name"] = username
+	claims["name"] = req.Username
 	claims["expires"] = time.Now().Add(time.Hour * 72).Unix()
 
 	// Generate encoded token and send it as response.
@@ -107,18 +89,12 @@ func auth(c echo.Context) error {
 	cookie.Value = t
 	cookie.Expires = time.Now().Add(time.Hour * 72)
 	cookie.Secure = true
-	c.SetCookie(cookie)
+	//c.SetCookie(cookie)
 
 	return c.JSON(http.StatusOK, map[string]string{
-		"token": t,
+		"token":    t,
+		"username": req.Username,
 	})
-}
-
-func testjwt(c echo.Context) error {
-	user := c.Get("user").(*jwt.Token)
-	claims := user.Claims.(jwt.MapClaims)
-	name := claims["name"].(string)
-	return c.String(http.StatusOK, "Hello "+name)
 }
 
 func main() {
@@ -129,7 +105,7 @@ func main() {
 		if err != nil {
 			log.Println(err)
 		}
-		err = os.WriteFile(passwdFile, []byte("admin"+string(hash)), 0644)
+		err = os.WriteFile(passwdFile, []byte("admin:"+string(hash)), 0644)
 		if err != nil {
 			log.Println(err)
 		}
@@ -138,7 +114,7 @@ func main() {
 	}
 
 	// Start grpc greeter
-	go greeter.Start(bearerTokenFile, certFile, keyFile)
+	go greeter.Start(jwtSecretFile, certFile, keyFile)
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -147,52 +123,33 @@ func main() {
 	// Register gRPC server endpoint
 	// Note: Make sure the gRPC server is running properly and accessible
 	mux := runtime.NewServeMux()
-	opts, err := grpchelpers.GetDialOptions(bearerTokenFile, certFile, "app")
+	opts, err := grpchelpers.GetDialOptions(jwtSecretFile, certFile, "app")
 	check(err)
 	err = greeterservice.RegisterGreeterServiceHandlerFromEndpoint(ctx, mux, "127.0.0.1:50051", opts)
 	check(err)
 
 	e := echo.New()
-	e.Renderer = &TemplateRenderer{
-		templates: template.Must(template.New("").Funcs(templateFuncs()).ParseGlob("web/template/*.html")),
-	}
-
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	// root redirect
-	e.GET("/", func(c echo.Context) (err error) {
-		return c.Redirect(302, "/app/")
-	})
+	// Redirect any 404 to /
+	e.HTTPErrorHandler = func(err error, c echo.Context) {
+		code := http.StatusInternalServerError
+		if he, ok := err.(*echo.HTTPError); ok {
+			code = he.Code
+		}
+		if code == 404 {
+			c.Redirect(302, "/")
+		} else {
+			e.DefaultHTTPErrorHandler(err, c)
+		}
+	}
 
-	e.Static("/static/", "web/static")
-
-	// Extract a bearer-token cookie and set authorization header
-	e.Use(echo.WrapMiddleware(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			bearerToken, err := r.Cookie("bearer-token")
-			if err == nil {
-				r.Header.Set("authorization", "Bearer "+bearerToken.Value)
-			}
-			next.ServeHTTP(w, r)
-		})
-	}))
-
-	e.GET("/app/", func(c echo.Context) error {
-		return c.Render(http.StatusOK, "app.html", nil)
-	})
+	// Serve vue
+	e.Static("/", "/static")
 
 	// Auth route
-	// Required to test authorisation when jwt does't exist
 	e.POST("/auth", auth)
-	e.GET("/auth", func(c echo.Context) error {
-		return c.Render(http.StatusOK, "auth.html", nil)
-	})
-
-	// JWT test
-	jwt := e.Group("/testjwt")
-	jwt.Use(middleware.JWT([]byte(jwtSecret))) // JWT
-	jwt.GET("", testjwt)
 
 	// grpc-gateway
 	api := e.Group("/api")
@@ -212,7 +169,7 @@ func main() {
 		go e2.Start(address + ":80")
 		e.Logger.Fatal(e.StartTLS(address+":"+port, certFile, keyFile))
 	} else {
-		e.Start(address + ":80")
+		e.Logger.Fatal(e.Start(address + ":" + port))
 	}
 }
 
