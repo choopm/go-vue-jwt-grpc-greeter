@@ -5,8 +5,7 @@ import (
 	"log"
 	"net"
 
-	pb "gitlab.0pointer.org/choopm/greeter/api/services/greeterservice"
-
+	"gitlab.0pointer.org/choopm/greeter/api/services/greeterservice"
 	"gitlab.0pointer.org/choopm/grpchelpers"
 )
 
@@ -15,15 +14,15 @@ const (
 )
 
 type server struct {
-	pb.UnimplementedGreeterServiceServer
+	greeterservice.UnimplementedGreeterServiceServer
 }
 
-func (s *server) Hello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloResponse, error) {
+func (s *server) Hello(ctx context.Context, in *greeterservice.HelloRequest) (*greeterservice.HelloResponse, error) {
 	log.Printf("Received: %v", in.GetName())
-	return &pb.HelloResponse{Greeting: "Hello " + in.GetName()}, nil
+	return &greeterservice.HelloResponse{Greeting: "Hello " + in.GetName()}, nil
 }
 
-func Start(jwtSecret string, certFile string, keyFile string) {
+func StartServer(jwtSecret string, certFile string, keyFile string) {
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -32,7 +31,7 @@ func Start(jwtSecret string, certFile string, keyFile string) {
 	if err != nil {
 		log.Fatalf("failed to create server: %v", err)
 	}
-	pb.RegisterGreeterServiceServer(s, &server{})
+	greeterservice.RegisterGreeterServiceServer(s, &server{})
 	log.Printf("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)

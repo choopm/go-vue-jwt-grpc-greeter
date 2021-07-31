@@ -3,8 +3,10 @@
 ## Go backend
 
 ### Running it for development
+You need to generate a certificate first, take a look at [docker-entrypoint.sh](docker-entrypoint.sh).
+
 ```
-export JWT_SECRET=data/jwt.secret; export TLS_CRT=data/tls.crt; export TLS_KEY=data/tls.key; export PASSWD=data/passwd; export PORT=4443;
+export TLS_CRT=data/tls.crt; export TLS_KEY=data/tls.key; export PORT=4443; export DATABASE=data/gorm.db
 go run cmd/greeter/main.go
 ```
 ## Vue frontend

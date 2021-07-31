@@ -22,11 +22,5 @@ else
   openssl x509 -text -nocert -in $TLS_CRT
 fi
 
-if [ ! -f $JWT_SECRET ]; then
-  echo "Missing $JWT_SECRET"
-  echo "generating one"
-  openssl rand -base64 32 > $JWT_SECRET
-fi
-
 echo "Exec $@"
 exec $@
