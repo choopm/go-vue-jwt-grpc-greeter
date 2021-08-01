@@ -1,4 +1,10 @@
 <template>
+  <header class="jumbotron">
+    <h3>
+      Greeter
+    </h3>
+  </header>
+
   <div class="container">
     <div class="form-group">
       <label for="name">Name</label>

@@ -1,10 +1,7 @@
 package database
 
-import "gorm.io/gorm"
-
 type setting struct {
-	gorm.Model
-	Name  string
+	Name  string `gorm:"primaryKey"`
 	Value string
 }
 

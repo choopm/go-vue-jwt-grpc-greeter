@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -15,9 +14,10 @@ import (
 
 	"gitlab.0pointer.org/choopm/greeter/api/services/greeterservice"
 
-	"gitlab.0pointer.org/choopm/greeter/internal/common"
-	"gitlab.0pointer.org/choopm/greeter/internal/database"
-	"gitlab.0pointer.org/choopm/greeter/internal/greeter"
+	"gitlab.0pointer.org/choopm/greeter/pkg/common"
+	"gitlab.0pointer.org/choopm/greeter/pkg/database"
+	"gitlab.0pointer.org/choopm/greeter/pkg/greeter"
+	"gitlab.0pointer.org/choopm/greeter/pkg/jwthelper"
 
 	"gitlab.0pointer.org/choopm/grpchelpers"
 )
@@ -39,6 +39,7 @@ func main() {
 		log.Fatalln("Unable to open database", err)
 	}
 
+	// create inital admin user
 	if !db.HasUsers() {
 		log.Println("Creating initial admin user")
 		hash, err := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
@@ -50,14 +51,24 @@ func main() {
 
 	jwtSecret := db.GetSetting("jwtsecret")
 	if jwtSecret == "" {
+		// create inital jwtSecret
 		jwtSecret = db.SaveSetting("jwtsecret", common.RandStringBytesMaskImprSrc(32))
 		if jwtSecret == "" {
 			log.Fatalln("Unable to get/create jwtsecret")
 		}
 	}
+	greeterBind := db.GetSetting("greeterbind")
+	if greeterBind == "" {
+		// create setting greeterBind
+		greeterBind = db.SaveSetting("greeterbind", "127.0.0.1:50051")
+		if greeterBind == "" {
+			log.Fatalln("Unable to get/create greeterBind")
+		}
+	}
 
 	// Start grpc greeter
-	go greeter.StartServer(jwtSecret, certFile, keyFile)
+	greeterServer := greeter.New(jwtSecret)
+	go greeterServer.Start(greeterBind, jwtSecret, certFile, keyFile)
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -70,6 +81,7 @@ func main() {
 	err = greeterservice.RegisterGreeterServiceHandlerFromEndpoint(ctx, mux, "127.0.0.1:50051", opts)
 	check(err)
 
+	// Setup echo
 	e := echo.New()
 	e.HideBanner = true
 	e.Use(middleware.Logger())
@@ -126,7 +138,7 @@ func main() {
 		}
 		// success
 
-		token, err := createJWT(jwtSecret, req.Username, time.Now().Add(time.Hour*72).Unix())
+		token, err := jwthelper.CreateJWT(jwtSecret, req.Username, time.Now().Add(time.Hour*72).Unix())
 		if err != nil {
 			return err
 		}
@@ -158,14 +170,18 @@ func main() {
 	}))
 
 	if httpRedirect == "true" {
+		// Redirect any http requests to https using a second echo server
 		e2 := echo.New()
 		e2.HideBanner = true
 		e2.Use(middleware.Logger())
 		e2.Use(middleware.Recover())
 		e2.Pre(middleware.HTTPSRedirect())
 		go e2.Start(address + ":80")
+
+		// Start TLS
 		e.Logger.Fatal(e.StartTLS(address+":"+port, certFile, keyFile))
 	} else {
+		// Start without TLS
 		e.Logger.Fatal(e.Start(address + ":" + port))
 	}
 }
@@ -174,21 +190,4 @@ func check(err error) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func createJWT(jwtSecret, username string, expires int64) (string, error) {
-	claims := &jwt.StandardClaims{
-		ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
-		IssuedAt:  time.Now().Unix(),
-		Issuer:    "greeter",
-	}
-	// Create token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// Generate encoded token and send it as response.
-	t, err := token.SignedString([]byte(jwtSecret))
-	if err != nil {
-		return "", err
-	}
-	return string(t), nil
 }

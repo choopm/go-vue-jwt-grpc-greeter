@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+// https://stackoverflow.com/a/31832326
+
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const (
 	letterIdxBits = 6                    // 6 bits to represent a letter index
