@@ -25,15 +25,10 @@ COPY . .
 RUN yarn build
 
 FROM alpine
-RUN apk add --no-cache openssl libcap
-RUN set -eux; \
-	addgroup -S -g 900 appuser; \
-	adduser -S -u 900 -G appuser -s /bin/sh -h / -H -D appuser;
+RUN apk add --no-cache openssl
 COPY --from=0 /greeter /greeter
 COPY --from=1 /builds/greeter/dist /static
 COPY docker-entrypoint.sh /
-RUN setcap 'cap_net_bind_service=+ep' /greeter
-USER appuser
 ENV DATABASE "/data/gorm.db"
 ENV TLS_CRT "/data/tls.crt"
 ENV TLS_KEY "/data/tls.key"
