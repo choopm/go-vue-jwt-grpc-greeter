@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net"
+	"time"
 
 	"gitlab.0pointer.org/choopm/greeter/api/services/greeterservice"
 	"gitlab.0pointer.org/choopm/grpchelpers"
@@ -19,6 +20,7 @@ type server struct {
 
 func (s *server) Hello(ctx context.Context, in *greeterservice.HelloRequest) (*greeterservice.HelloResponse, error) {
 	log.Printf("Received: %v", in.GetName())
+	time.Sleep(1 * time.Second)
 	return &greeterservice.HelloResponse{Greeting: "Hello " + in.GetName()}, nil
 }
 
