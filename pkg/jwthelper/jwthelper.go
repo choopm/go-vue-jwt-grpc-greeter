@@ -13,9 +13,10 @@ import (
 type CustomClaims struct {
 	jwt.StandardClaims
 	Username string `json:"username,omitempty"`
+	Roles    string `json:"roles,omitempty"`
 }
 
-func CreateJWT(jwtSecret, username string, expires int64) (string, error) {
+func CreateJWT(jwtSecret, username, roles string, expires int64) (string, error) {
 	claims := &CustomClaims{
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expires,
@@ -23,6 +24,7 @@ func CreateJWT(jwtSecret, username string, expires int64) (string, error) {
 			Issuer:    "greeter",
 		},
 		Username: username,
+		Roles:    roles,
 	}
 	// Create token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

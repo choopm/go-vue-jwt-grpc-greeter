@@ -46,7 +46,7 @@ func main() {
 		if err != nil {
 			log.Println("Unable to generate hash", err)
 		}
-		db.CreateUser("admin", string(hash))
+		db.CreateUser("admin", string(hash), "admin,user")
 	}
 
 	jwtSecret := db.GetSetting("jwtsecret")
@@ -138,7 +138,7 @@ func main() {
 		}
 		// success
 
-		token, err := jwthelper.CreateJWT(jwtSecret, req.Username, time.Now().Add(time.Hour*72).Unix())
+		token, err := jwthelper.CreateJWT(jwtSecret, req.Username, user.Roles, time.Now().Add(time.Hour*72).Unix())
 		if err != nil {
 			return err
 		}
