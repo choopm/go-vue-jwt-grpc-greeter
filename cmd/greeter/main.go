@@ -12,12 +12,12 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/crypto/bcrypt"
 
-	"gitlab.0pointer.org/choopm/greeter/api/services/greeterservice"
+	"github.com/choopm/go-vue-jwt-grpc-greeter/api/services/greeterservice"
 
-	"gitlab.0pointer.org/choopm/greeter/pkg/common"
-	"gitlab.0pointer.org/choopm/greeter/pkg/database"
-	"gitlab.0pointer.org/choopm/greeter/pkg/greeter"
-	"gitlab.0pointer.org/choopm/greeter/pkg/jwthelper"
+	"github.com/choopm/go-vue-jwt-grpc-greeter/pkg/common"
+	"github.com/choopm/go-vue-jwt-grpc-greeter/pkg/database"
+	"github.com/choopm/go-vue-jwt-grpc-greeter/pkg/greeter"
+	"github.com/choopm/go-vue-jwt-grpc-greeter/pkg/jwthelper"
 
 	"gitlab.0pointer.org/choopm/grpchelpers"
 )

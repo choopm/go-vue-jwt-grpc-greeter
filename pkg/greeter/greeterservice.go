@@ -6,8 +6,8 @@ import (
 	"net"
 	"time"
 
-	"gitlab.0pointer.org/choopm/greeter/api/services/greeterservice"
-	"gitlab.0pointer.org/choopm/greeter/pkg/jwthelper"
+	"github.com/choopm/go-vue-jwt-grpc-greeter/api/services/greeterservice"
+	"github.com/choopm/go-vue-jwt-grpc-greeter/pkg/jwthelper"
 	"gitlab.0pointer.org/choopm/grpchelpers"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

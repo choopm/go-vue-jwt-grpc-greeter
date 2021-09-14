@@ -1,7 +1,7 @@
 FROM golang:alpine
 ARG CI_PROJECT_DIR=/builds/greeter
-ARG CI_PROJECT_URL=https://gitlab.0pointer.org/choopm/greeter
-ARG CI_SERVER_HOST=gitlab.0pointer.org
+ARG CI_PROJECT_URL=https://github.com/choopm/go-vue-jwt-grpc-greeter
+ARG CI_SERVER_HOST=github.com
 ARG CI_JOB_USER=gitlab-ci-token
 ARG CI_JOB_TOKEN=
 RUN apk add --no-cache git gcc musl-dev
@@ -24,7 +24,7 @@ RUN yarn install
 COPY . .
 RUN yarn build
 
-FROM alpine
+FROM alpine as release
 RUN apk add --no-cache openssl
 COPY --from=0 /greeter /greeter
 COPY --from=1 /builds/greeter/dist /static

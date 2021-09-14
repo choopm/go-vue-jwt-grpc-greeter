@@ -6,7 +6,7 @@ import "google/api/annotations.proto";
 import "google/api/client.proto";
 import "google/api/field_behavior.proto";
 
-option go_package = "gitlab.0pointer.org/choopm/greeter/api/service/greeterservice;greeterservice";
+option go_package = "github.com/choopm/go-vue-jwt-grpc-greeter/api/service/greeterservice;greeterservice";
 
 service GreeterService {
   option (google.api.default_host) = "clouddatabase.googleapis.com";
