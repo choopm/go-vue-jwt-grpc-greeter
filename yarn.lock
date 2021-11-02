@@ -1477,10 +1477,10 @@
   optionalDependencies:
     prettier "^1.18.2"
 
-"@vue/devtools-api@^6.0.0-beta.11", "@vue/devtools-api@^6.0.0-beta.14":
-  version "6.0.0-beta.15"
-  resolved "https://registry.yarnpkg.com/@vue/devtools-api/-/devtools-api-6.0.0-beta.15.tgz#ad7cb384e062f165bcf9c83732125bffbc2ad83d"
-  integrity sha512-quBx4Jjpexo6KDiNUGFr/zF/2A4srKM9S9v2uHgMXSU//hjgq1eGzqkIFql8T9gfX5ZaVOUzYBP3jIdIR3PKIA==
+"@vue/devtools-api@^6.0.0-beta.11", "@vue/devtools-api@^6.0.0-beta.14", "@vue/devtools-api@^6.0.0-beta.15":
+  version "6.0.0-beta.19"
+  resolved "https://registry.yarnpkg.com/@vue/devtools-api/-/devtools-api-6.0.0-beta.19.tgz#f8e88059daa424515992426a0c7ea5cde07e99bf"
+  integrity sha512-ObzQhgkoVeoyKv+e8+tB/jQBL2smtk/NmC9OmFK8UqdDpoOdv/Kf9pyDWL+IFyM7qLD2C75rszJujvGSPSpGlw==
 
 "@vue/preload-webpack-plugin@^1.1.0":
   version "1.1.2"
@@ -8394,9 +8394,11 @@ vary@~1.1.2:
   integrity sha1-IpnwLG3tMNSllhsLn3RSShj2NPw=
 
 vee-validate@4:
-  version "4.4.11"
-  resolved "https://registry.yarnpkg.com/vee-validate/-/vee-validate-4.4.11.tgz#497437588a2cde5548c2b479805ccdd2534cf4b6"
-  integrity sha512-wZR3YbL6tzOhr/JwBskGdBxTEqwcVWQNuyD5rpZSw+uNKqkTlLI11hUcAyjOo4wk+CJOjKvab+1SAfY4xClmsA==
+  version "4.5.5"
+  resolved "https://registry.yarnpkg.com/vee-validate/-/vee-validate-4.5.5.tgz#c07190119ffa8b8a3cc2f279ab5cdd2e38910b63"
+  integrity sha512-AAucVxUVC6n1QCGux61ExCbHFQglDDSUxbzGd1nGKQpXJK6F8ncGOStQOaZF+3TnNeuMoW5aQdK4MAz15YpaVA==
+  dependencies:
+    "@vue/devtools-api" "^6.0.0-beta.15"
 
 vendors@^1.0.0:
   version "1.0.4"
