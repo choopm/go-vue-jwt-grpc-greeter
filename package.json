@@ -17,7 +17,7 @@
     "jquery": "^3.6.0",
     "popper.js": "^1.16.1",
     "vee-validate": "4",
-    "vue": "^3.0.0",
+    "vue": "^3.2.21",
     "vue-router": "4",
     "vuex": "4",
     "yup": "^0.32.9"
